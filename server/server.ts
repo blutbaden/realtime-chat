@@ -2,10 +2,10 @@ import express, { Application } from "express";
 import { createServer, Server as HTTPServer } from "http";
 import path from "path";
 import { Server as SocketIoServer } from "socket.io";
-import {InMemorySessionStore} from "./sessionStore";
-import {InMemoryMessageStore} from "./messageStore";
+/*import {InMemorySessionStore} from "./sessionStore";
+import {InMemoryMessageStore} from "./messageStore";*/
 
-const randomBytes = require('randombytes');
+// const randomBytes = require('randombytes');
 
 export class Server {
     private httpServer: HTTPServer;
@@ -13,10 +13,11 @@ export class Server {
     private io: SocketIoServer;
 
     private readonly DEFAULT_PORT = 5000;
-    private randomId;
+    // private randomId;
+    private users = [];
 
 
-    constructor(private sessionStore: InMemorySessionStore, private messageStore: InMemoryMessageStore) {
+    constructor(/*private sessionStore: InMemorySessionStore, private messageStore: InMemoryMessageStore*/) {
         this.initialize();
     }
 
@@ -24,7 +25,7 @@ export class Server {
         this.app = express();
         this.httpServer = createServer(this.app);
         this.io = new SocketIoServer(this.httpServer);
-        this.randomId = randomBytes(8).toString("hex");
+        // this.randomId = randomBytes(8).toString("hex");
 
         this.configureApp();
         this.configureRoutes();
@@ -42,100 +43,67 @@ export class Server {
     }
 
     private handleSocketConnection(): void {
+        // Register a middleware
+        this.registerMiddleware();
+        // On Open connection
+        this.io.on("connection", (socket) => {
+            this.pushAllUsers(socket);
+            this.notifyExistingUsers(socket);
+            this.onSendMessage(socket);
+            this.notifyUsersUponDisconnection(socket);
+        });
+    }
+
+    public registerMiddleware(){
+        // We register a middleware which checks the username and allows the connection
+        // A middleware function is a function that gets executed for every incoming connection.
         this.io.use(async (socket, next) => {
-            const sessionID = socket.handshake.auth.sessionID;
-            if (sessionID) {
-                const session = this.sessionStore.findSession(sessionID);
-                if (session) {
-                    socket.data.sessionID = sessionID;
-                    socket.data.userID = session.userID;
-                    socket.data.username = session.username;
-                    return next();
-                }
-            }
             const username = socket.handshake.auth.username;
             if (!username) {
                 return next(new Error("invalid username"));
             }
-            socket.data.sessionID = this.randomId;
-            socket.data.userID = this.randomId;
+            // The username is added as an attribute of the socket in order to be reused later
             socket.data.username = username;
             next();
-
         });
+    }
 
-        this.io.on("connection", (socket) => {
-            // persist session
-            this.sessionStore.saveSession(socket.data.sessionID, {
-                userID: socket.data.userID,
+    public pushAllUsers(socket){
+        this.users = [];
+        //  Map of all currently connected Socket instances, indexed by ID.
+        for (let [id, socket] of this.io.of("/").sockets) {
+            this.users.push({
+                userID: id,
                 username: socket.data.username,
-                connected: true,
             });
-            // emit session details
-            socket.emit("session", {
-                sessionID: socket.data.sessionID,
-                userID: socket.data.userID,
-            });
+        }
+        socket.emit("users", this.users);
+    }
 
-            // join the "userID" room
-            socket.join(socket.data.userID);
+    public notifyExistingUsers(socket){
+        // socket.broadcast.emit => Emit to all connected clients, except the socket itself.
+        // The other form of broadcasting, io.emit => would have sent the “user connected” event
+        // to all connected clients, including the new user.
+        socket.broadcast.emit("user connected", {
+            userID: socket.id,
+            username: socket.data.username,
+        });
+    }
 
-            // fetch existing users
-            const users = [];
-            const messagesPerUser = new Map();
-            this.messageStore.findMessagesForUser(socket.data.userID).forEach((message) => {
-                const {from, to} = message;
-                const otherUser = socket.data.userID === from ? to : from;
-                if (messagesPerUser.has(otherUser)) {
-                    messagesPerUser.get(otherUser).push(message);
-                } else {
-                    messagesPerUser.set(otherUser, [message]);
-                }
+    public onSendMessage(socket){
+        // forward the private message to the right recipient (and to other tabs of the sender)
+        socket.on("private message", ({content, to}) => {
+            // Emits to the given user ID.
+            socket.to(to).emit("private message", {
+                content,
+                from: socket.id,
             });
-            this.sessionStore.findAllSessions().forEach((session) => {
-                users.push({
-                    userID: session.userID,
-                    username: session.username,
-                    connected: session.connected,
-                    messages: messagesPerUser.get(session.userID) || [],
-                });
-            });
-            socket.emit("users", users);
+        });
+    }
 
-            // notify existing users
-            socket.broadcast.emit("user connected", {
-                userID: socket.data.userID,
-                username: socket.data.username,
-                connected: true,
-                messages: [],
-            });
-
-            // forward the private message to the right recipient (and to other tabs of the sender)
-            socket.on("private message", ({content, to}) => {
-                const message = {
-                    content,
-                    from: socket.data.userID,
-                    to,
-                };
-                socket.to(to).to(socket.data.userID).emit("private message", message);
-                this.messageStore.saveMessage(message);
-            });
-
-            // notify users upon disconnection
-            socket.on("disconnect", async () => {
-                const matchingSockets = await this.io.in(socket.data.userID).allSockets();
-                const isDisconnected = matchingSockets.size === 0;
-                if (isDisconnected) {
-                    // notify other users
-                    socket.broadcast.emit("user disconnected", socket.data.userID);
-                    // update the connection status of the session
-                    this.sessionStore.saveSession(socket.data.sessionID, {
-                        userID: socket.data.userID,
-                        username: socket.data.username,
-                        connected: false,
-                    });
-                }
-            });
+    public notifyUsersUponDisconnection(socket){
+        socket.on("disconnect", () => {
+            socket.broadcast.emit("user disconnected", socket.id);
         });
     }
 
