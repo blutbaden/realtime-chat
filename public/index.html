@@ -35,12 +35,12 @@
             <h2 class="talk-info" id="talking-with-info">
                 Select active user on the left menu.
             </h2>
-            <ul id="messages"></ul>
+            <ul id="messages" style="max-height: 400px;overflow: auto;"></ul>
             <form class="d-none" id="form" action="">
                 <input id="message-content" autocomplete="off" />
                 <button type="button" id="send_message">Send</button>
             </form>
-            <div class="video-container">
+            <div class="video-container d-none">
                 <video autoplay class="remote-video" id="remote-video"></video>
                 <video autoplay muted class="local-video" id="local-video"></video>
             </div>

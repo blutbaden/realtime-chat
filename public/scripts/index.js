@@ -16,7 +16,6 @@ $(document).ready(function () {
             socket.auth = { sessionID };
             $( "#select-username" ).addClass( "d-none" );
             $( "#message-panel" ).removeClass( "d-none" );
-            console.log("here", socket);
             socket.connect();
         }else {
             $( "#submit_username" ).click(function() {
@@ -45,7 +44,7 @@ $(document).ready(function () {
                 selectedUser.messages.push(message);
                 addNewMessage(message, null);
             }
-            $('#message-content').val('');
+            $('#message-content').val('').focus();
         });
     });
 });
@@ -141,7 +140,6 @@ function onUserDisconnected(){
 
 function onReceiveMessage(){
     socket.on("private message", ({ content, from, to }) => {
-        console.log("=======>", content, from, to)
         if(selectedUser && selectedUser.userID === from){
             const message = {
                 content,
@@ -225,7 +223,8 @@ function addNewMessage(message, user) {
                      <div class="sender">${message.fromSelf ? "(you)" : (user.username)}</div>
                      ${message.content}
                    </li>`)
-    $( "#messages" ).append( elm );
+    $( "#messages" ).append( elm ).animate({ scrollTop: 1000 }, 1000);
+
 }
 
 function updateMessageStatus(from, isRead){
