@@ -1,9 +1,10 @@
-import express, { Application } from "express";
-import { createServer, Server as HTTPServer } from "http";
+import express, {Application} from "express";
+import {createServer, Server as HTTPServer} from "http";
 import path from "path";
-import { Server as SocketIoServer } from "socket.io";
+import {Server as SocketIoServer} from "socket.io";
 import {InMemorySessionStore} from "./sessionStore";
 import {InMemoryMessageStore} from "./messageStore";
+import {InMemoryRoomStore} from "./roomStore";
 
 const randomBytes = require('randombytes');
 
@@ -14,9 +15,10 @@ export class Server {
 
     private readonly DEFAULT_PORT = 5000;
     private users = [];
+    private queue = []; // list of sockets waiting for peers
 
-
-    constructor(private sessionStore: InMemorySessionStore, private messageStore: InMemoryMessageStore) {
+    constructor(private sessionStore: InMemorySessionStore, private messageStore: InMemoryMessageStore,
+                private roomStore: InMemoryRoomStore) {
         this.initialize();
     }
 
@@ -26,6 +28,8 @@ export class Server {
         this.io = new SocketIoServer(this.httpServer);
         this.configureApp();
         this.configureRoutes();
+        // create global public room
+        this.createRooms("room-1", "Global Public Room", [], "PUBLIC");
         this.handleSocketConnection();
     }
 
@@ -46,14 +50,12 @@ export class Server {
         this.io.on("connection", (socket) => {
             this.persistSession(socket);
             this.emitSessionDetails(socket);
-            this.pushAllUsers(socket);
-            this.notifyExistingUsers(socket);
-            this.onSendMessage(socket);
-            this.notifyUsersUponDisconnection(socket);
+            this.onSelectPublicChat(socket);
+            this.onSelectRandomChat(socket);
         });
     }
 
-    public registerMiddleware(){
+    public registerMiddleware() {
         // We register a middleware which checks the username and allows the connection
         // A middleware function is a function that gets executed for every incoming connection.
         this.io.use(async (socket, next) => {
@@ -81,18 +83,69 @@ export class Server {
         });
     }
 
-    public pushAllUsers(socket){
+    public persistSession(socket) {
+        this.sessionStore.saveSession(socket.data.sessionID, {
+            userID: socket.data.userID,
+            username: socket.data.username,
+            connected: true,
+        });
+    }
+
+    public emitSessionDetails(socket) {
+        // The session details are then sent to the user:
+        socket.emit("session", {
+            sessionID: socket.data.sessionID,
+            userID: socket.data.userID,
+        });
+        // join the "userID" room
+    }
+
+    public onSelectRandomChat(socket) {
+        socket.on('select random chat', () => {
+            this.findPeerForLoneSocket(socket);
+            this.listenForRoomMessage(socket);
+            this.leaveRoom(socket);
+            this.notifyUsersUponDisconnection(socket);
+        });
+    }
+
+    public onSelectPublicChat(socket) {
+        socket.on('select public chat', () => {
+            socket.join(socket.data.userID);
+            this.pushAllUsers(socket);
+            this.notifyExistingUsers(socket);
+            this.onSendMessage(socket);
+            this.pushAllRooms(socket);
+            this.onUserJoinRoom(socket);
+            this.listenForRoomMessage(socket);
+            this.leaveRoom(socket);
+            this.notifyUsersUponDisconnection(socket);
+        });
+    }
+
+    public pushAllUsers(socket) {
+        let userID = socket.data.userID;
         this.users = [];
         // fetch the list of messages upon connection
         const messagesPerUser = new Map();
-        this.messageStore.findMessagesForUser(socket.data.userID).forEach((message) => {
-            const { from, to } = message;
-            const otherUser = socket.data.userID === from ? to : from;
+        this.messageStore.findMessagesForUser(userID).forEach((message) => {
+            const {from, to} = message;
+            const otherUser = userID === from ? to : from;
             if (messagesPerUser.has(otherUser)) {
                 messagesPerUser.get(otherUser).push(message);
             } else {
                 messagesPerUser.set(otherUser, [message]);
             }
+        });
+        // fetch the list of joined rooms upon connection
+        const roomsPerUser = new Map();
+        this.roomStore.findJoinedRoomsForUser(userID).forEach((room) => {
+            if (roomsPerUser.has(userID)) {
+                roomsPerUser.get(userID).push(room);
+            } else {
+                roomsPerUser.set(userID, [room]);
+            }
+            socket.join(room.roomID);
         });
         //  Map of all currently connected Socket instances, indexed by ID.
         // fetch existing users
@@ -101,13 +154,14 @@ export class Server {
                 userID: session.userID,
                 username: session.username,
                 connected: session.connected,
+                rooms: roomsPerUser.get(session.userID) || [],
                 messages: messagesPerUser.get(session.userID) || [],
             });
         });
         socket.emit("users", this.users);
     }
 
-    public notifyExistingUsers(socket){
+    public notifyExistingUsers(socket) {
         // socket.broadcast.emit => Emit to all connected clients, except the socket itself.
         // The other form of broadcasting, io.emit => would have sent the “user connected” event
         // to all connected clients, including the new user.
@@ -116,10 +170,11 @@ export class Server {
             username: socket.data.username,
             connected: true,
             messages: [],
+            rooms: [],
         });
     }
 
-    public onSendMessage(socket){
+    public onSendMessage(socket) {
         // forward the private message to the right recipient (and to other tabs of the sender)
         socket.on("private message", ({content, to}) => {
             // Emits to the given user ID.
@@ -133,39 +188,101 @@ export class Server {
         });
     }
 
-    public notifyUsersUponDisconnection(socket){
+    public createRooms(roomID, roomName, users, roomType) {
+        const room = {roomID: roomID, roomName: roomName, messages: [], users: users, roomType: roomType}
+        this.roomStore.saveRoom(room);
+    }
+
+    public pushAllRooms(socket) {
+        const rooms = this.roomStore.getAllRoomsByType("PUBLIC");
+        socket.emit("rooms", rooms);
+    }
+
+    public onUserJoinRoom(socket) {
+        // Broadcast when a user join room
+        socket.on('join-room', ({roomID}) => {
+            const userId = socket.data.userID;
+            this.roomStore.onUserJoin(userId, roomID);
+            socket.join(roomID);
+            socket.broadcast.to(roomID).emit('join-room-message',
+                {
+                    roomID: roomID,
+                    content: `${socket.data.username} has joined the chat`
+                }
+            );
+        });
+    }
+
+    public listenForRoomMessage(socket) {
+        socket.on('room-message', ({roomID, content}) => {
+            const userId = socket.data.userID;
+            const message = {
+                content,
+                from: userId,
+                to: roomID
+            };
+            this.io.to(roomID).emit('room-message', message);
+        });
+    }
+
+    public leaveRoom(socket) {
+        socket.on('leave room', ({roomID, content}) => {
+            const userID = socket.data.userID;
+            this.roomStore.onUserLeave(userID, roomID);
+            socket.leave(roomID);
+            socket.broadcast.to(roomID).emit('chat end');
+            this.findPeerForLoneSocket(socket);
+        });
+    }
+
+    public findPeerForLoneSocket(socket) {
+        // this is place for possibly some extensive logic
+        // which can involve preventing two people pairing multiple times
+        if (this.queue.length) {
+            // somebody is in queue, pair them!
+            let peer = this.queue.shift();
+            let roomID = socket.data.userID + '#' + peer.data.userID;
+            // create room
+            this.createRooms(roomID, "room-" + roomID, [peer.data.userID, socket.data.userID], "RANDOM");
+            // join them both
+            peer.join(roomID);
+            socket.join(roomID);
+            // exchange names between the two of them and start the chat
+            peer.emit('random chat start', {name: "peer", room: roomID});
+            socket.emit('random chat start', {name: "user", room: roomID});
+        } else {
+            // queue is empty, add our lone socket
+            this.queue.push(socket);
+        }
+    }
+
+    public notifyUsersUponDisconnection(socket) {
+        const userID = socket.data.userID;
         socket.on("disconnect", async () => {
-            const matchingSockets = await this.io.in(socket.data.userID).allSockets();
+            const matchingSockets = await this.io.in(userID).allSockets();
             const isDisconnected = matchingSockets.size === 0;
             if (isDisconnected) {
                 // notify other users
-                socket.broadcast.emit("user disconnected", socket.data.userID);
+                socket.broadcast.emit("user disconnected", userID);
                 // update the connection status of the session
                 this.sessionStore.saveSession(socket.data.sessionID, {
-                    userID: socket.data.userID,
+                    userID: userID,
                     username: socket.data.username,
                     connected: false,
                 });
+                // leave random rooms and notify users
+                this.roomStore.findJoinedRoomsForUser(userID).forEach(room => {
+                    this.roomStore.onUserLeave(userID, room.roomID);
+                    socket.leave(room.roomID);
+                    if(room.roomType === "RANDOM"){
+                        socket.broadcast.to(room.roomID).emit('chat end');
+                    }else {
+                        const content = socket.data.username + " has left the chat";
+                        socket.broadcast.to(room.roomID).emit('leave room', {roomID: room.roomID, content});
+                    }
+                })
             }
         });
-    }
-
-    public persistSession(socket){
-        this.sessionStore.saveSession(socket.data.sessionID, {
-            userID: socket.data.userID,
-            username: socket.data.username,
-            connected: true,
-        });
-    }
-
-    public emitSessionDetails(socket){
-        // The session details are then sent to the user:
-        socket.emit("session", {
-            sessionID: socket.data.sessionID,
-            userID: socket.data.userID,
-        });
-        // join the "userID" room
-        socket.join(socket.data.userID);
     }
 
     public listen(callback: (port: number) => void): void {
@@ -173,6 +290,5 @@ export class Server {
             callback(this.DEFAULT_PORT);
         });
     }
-
 
 }
