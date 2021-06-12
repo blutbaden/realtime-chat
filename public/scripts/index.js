@@ -124,6 +124,7 @@ $(document).ready(function () {
                 selectedRoom = null;
                 $(".message-list").empty();
                 $(".send__").prop('disabled', false);
+                $("#chat_message").prop('disabled', false);
                 $('#user-left-modal').modal('hide');
             }
         });
@@ -330,7 +331,13 @@ function onUserJoinRoom() {
 function onLeaveRoom() {
     socket.on("leave room", ({userID, roomID}) => {
         if(randomChatAlreadySelected){
-
+            totalSeconds = 0;
+            clearInterval(timerVar);
+            $('#user-left-modal').modal('show');
+            $(".send__").prop('disabled', true);
+            $("#chat_message").prop('disabled', true);
+            /*$('#user-left-modal').modal('toggle');*/
+            /*$('#user-left-modal').modal('hide');*/
         }else {
             let indexUser = usersList.findIndex(u => u.userID === userID);
             if (indexUser !== -1) {
