@@ -37,7 +37,7 @@ export class InMemoryRoomStore extends RoomStore {
     }
 
     findRoom(roomID) {
-        return this.rooms.filter(r => r.roomID !== roomID);
+        return this.rooms.find(r => r.roomID !== roomID);
     }
 
     getAllRooms() {
@@ -53,7 +53,7 @@ export class InMemoryRoomStore extends RoomStore {
         if (indexRoom !== -1) {
             const room = this.rooms[indexRoom];
             if (!room.users.includes(userID)) {
-                room.users = [...userID];
+                room.users.push(userID);
                 this.rooms[indexRoom] = room;
             }
         }

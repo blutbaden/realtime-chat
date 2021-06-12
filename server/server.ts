@@ -139,14 +139,14 @@ export class Server {
         });
         // fetch the list of joined rooms upon connection
         const roomsPerUser = new Map();
-        this.roomStore.findJoinedRoomsForUser(userID).forEach((room) => {
+        /*this.roomStore.findJoinedRoomsForUser(userID).forEach((room) => {
             if (roomsPerUser.has(userID)) {
                 roomsPerUser.get(userID).push(room);
             } else {
                 roomsPerUser.set(userID, [room]);
             }
             socket.join(room.roomID);
-        });
+        });*/
         //  Map of all currently connected Socket instances, indexed by ID.
         // fetch existing users
         this.sessionStore.findAllSessions().forEach((session) => {
@@ -200,14 +200,14 @@ export class Server {
 
     public onUserJoinRoom(socket) {
         // Broadcast when a user join room
-        socket.on('join-room', ({roomID}) => {
-            const userId = socket.data.userID;
-            this.roomStore.onUserJoin(userId, roomID);
+        socket.on('join-room', ({userID, roomID}) => {
+            const userID_ = socket.data.userID;
+            this.roomStore.onUserJoin(userID_, roomID);
             socket.join(roomID);
-            socket.broadcast.to(roomID).emit('join-room-message',
+            this.io.in(roomID).emit('join-room',
                 {
-                    roomID: roomID,
-                    content: `${socket.data.username} has joined the chat`
+                    userID: userID_,
+                    roomID
                 }
             );
         });
@@ -226,12 +226,15 @@ export class Server {
     }
 
     public leaveRoom(socket) {
-        socket.on('leave room', ({roomID, content}) => {
-            const userID = socket.data.userID;
-            this.roomStore.onUserLeave(userID, roomID);
+        socket.on('leave room', ({userID, roomID}) => {
+            const userID_ = socket.data.userID;
+            this.roomStore.onUserLeave(userID_, roomID);
             socket.leave(roomID);
-            socket.broadcast.to(roomID).emit('chat end');
-            this.findPeerForLoneSocket(socket);
+            this.io.in(roomID).emit('leave room', {userID, roomID});
+            let room = this.roomStore.findRoom(roomID);
+            if(room && room.roomType === "RANDOM"){
+                this.findPeerForLoneSocket(socket);
+            }
         });
     }
 
@@ -258,6 +261,7 @@ export class Server {
 
     public notifyUsersUponDisconnection(socket) {
         const userID = socket.data.userID;
+        const username = socket.data.username;
         socket.on("disconnect", async () => {
             const matchingSockets = await this.io.in(userID).allSockets();
             const isDisconnected = matchingSockets.size === 0;
@@ -267,19 +271,15 @@ export class Server {
                 // update the connection status of the session
                 this.sessionStore.saveSession(socket.data.sessionID, {
                     userID: userID,
-                    username: socket.data.username,
+                    username: username,
                     connected: false,
                 });
                 // leave random rooms and notify users
                 this.roomStore.findJoinedRoomsForUser(userID).forEach(room => {
-                    this.roomStore.onUserLeave(userID, room.roomID);
-                    socket.leave(room.roomID);
-                    if(room.roomType === "RANDOM"){
-                        socket.broadcast.to(room.roomID).emit('chat end');
-                    }else {
-                        const content = socket.data.username + " has left the chat";
-                        socket.broadcast.to(room.roomID).emit('leave room', {roomID: room.roomID, content});
-                    }
+                    let {roomID} = room;
+                    this.roomStore.onUserLeave(userID, roomID);
+                    socket.leave(roomID);
+                    this.io.in(roomID).emit('leave room', {userID, roomID: roomID});
                 })
             }
         });

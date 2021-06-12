@@ -1,6 +1,6 @@
 import socket from './init-socket.js';
 
-// VARIABLES
+////////////////////////// VARIABLES ///////////////////////////////
 let usernameAlreadySubmitted = false;
 let randomChatAlreadySelected = false;
 let globalChatAlreadySelected = false;
@@ -11,7 +11,7 @@ let selectedRoom = null;
 let timerVar;
 let totalSeconds = 0;
 
-//////////////////////////////
+//////////////////////////// LOAD SCRIPTS ///////////////////////////
 
 $(document).ready(function () {
     $(function () {
@@ -48,7 +48,12 @@ $(document).ready(function () {
     });
     $(function () {
         function onSend() {
-            const content = $('.input__text').val();
+            let content = "";
+            if(randomChatAlreadySelected){
+                content = $('.input__text').val();
+            }else {
+                content = $('.input__text').val();
+            }
             if (content && content.trim() !== '') {
                 const message = {
                     content,
@@ -60,7 +65,7 @@ $(document).ready(function () {
                         to: selectedUser.userID,
                     });
                     selectedUser.messages.push(message);
-                    addNewMessage(message, null);
+                    createMessageItem(message);
                 }
                 if (selectedRoom) {
                     socket.emit("room-message", {
@@ -71,7 +76,6 @@ $(document).ready(function () {
                 $('.input__text').val('').focus();
             }
         }
-
         $(".send-btn").click(function () {
             onSend();
         });
@@ -88,15 +92,14 @@ $(document).ready(function () {
             $('.radio').removeClass('selected');
             $(this).addClass('selected');
         });
-
         $('#select-btn').click(function () {
-            if($('#select-public').hasClass("selected")){
+            if ($('#select-public').hasClass("selected")) {
                 globalChatAlreadySelected = true;
                 randomChatAlreadySelected = false;
                 $("#chat-choice").addClass("d-none");
                 $("#panel").removeClass("d-none");
                 socket.emit("select public chat");
-            }else if($('#select-random').hasClass("selected")){
+            } else if ($('#select-random').hasClass("selected")) {
                 randomChatAlreadySelected = true;
                 globalChatAlreadySelected = false;
                 $("#chat-choice").addClass("d-none");
@@ -105,14 +108,13 @@ $(document).ready(function () {
                 socket.emit("select random chat");
             }
         });
-
         $("#profile-img").click(function () {
             $("#status-options").toggleClass("active");
         });
-
         $(".leave-chat").click(function () {
-            if(selectedRoom){
+            if (selectedRoom) {
                 socket.emit("leave room", {
+                    userID: socket.userID,
                     roomID: selectedRoom.roomID,
                 });
                 $(".random-chat-loading").removeClass("d-none");
@@ -125,12 +127,10 @@ $(document).ready(function () {
                 $('#user-left-modal').modal('hide');
             }
         });
-
         $(".expand-button").click(function () {
             $("#profile").toggleClass("expanded");
             $("#contacts").toggleClass("expanded");
         });
-
         $("#status-options ul li").click(function () {
             $("#profile-img").removeClass();
             $("#status-online").removeClass("active");
@@ -138,7 +138,6 @@ $(document).ready(function () {
             $("#status-busy").removeClass("active");
             $("#status-offline").removeClass("active");
             $(this).addClass("active");
-
             if ($("#status-online").hasClass("active")) {
                 $("#profile-img").addClass("online");
             } else if ($("#status-away").hasClass("active")) {
@@ -150,12 +149,44 @@ $(document).ready(function () {
             } else {
                 $("#profile-img").removeClass();
             }
-
-
             $("#status-options").removeClass("active");
         });
     });
+    $(function () {
+        $( "#search-contact" ).keyup(function() {
+            let value = $( this ).val();
+            let query = value.toLowerCase();
+            if(selectedRoom){
+                $("#active-user").empty();
+                let usersIds = selectedRoom.users;
+                let users = [];
+                usersIds.forEach(idUser => {
+                    let user = usersList.find(user => user.userID === idUser);
+                    users.push(user);
+                });
+                let filtered = users.filter(item => item.username.toLowerCase().indexOf(query) >= 0);
+                filtered.forEach(user => {
+                    if(user.userID !== socket.userID){
+                        createUserItemContainer(user);
+                    }
+                });
+            }
+        });
+    });
 });
+
+//////////////////////////// USER ////////////////////////////
+
+function onGetSession() {
+    socket.on("session", ({sessionID, userID}) => {
+        // attach the session ID to the next reconnection attempts
+        socket.auth = {sessionID};
+        // store it in the localStorage
+        localStorage.setItem("sessionID", sessionID);
+        // save the ID of the user
+        socket.userID = userID;
+    });
+}
 
 function onConnectError() {
     // It's an event which will be emitted upon connection failure due to middleware errors or
@@ -175,7 +206,8 @@ function onConnectError() {
 function onUserEvent() {
     socket.on("users", (users) => {
         users.forEach((user) => {
-            user.messages.forEach((message) => {
+            let {messages} = user;
+            messages.forEach((message) => {
                 message.fromSelf = message.from === socket.userID;
             });
             for (let i = 0; i < usersList.length; i++) {
@@ -203,13 +235,45 @@ function onUserEvent() {
             if (a.username < b.username) return -1;
             return a.username > b.username ? 1 : 0;
         });
-        usersList.forEach(user => {
-            if (!user.self) {
-                createUserItemContainer(user);
-            }
-        })
     });
 }
+
+function onUserConnected() {
+    socket.on("user connected", (user) => {
+        const index = usersList.findIndex(u => u.userID === user.userID);
+        if (index === -1) {
+            user.hasNewMessages = false;
+            usersList.push(user);
+        } else {
+            const existingUser = usersList[index];
+            existingUser.connected = true;
+            const userElm = $(`#${existingUser.userID}`);
+            if (userElm.length > 0) {
+                const statusElm = userElm.find('[class*="contact-status"]').first();
+                statusElm.removeClass().addClass("contact-status online");
+            }
+        }
+    });
+}
+
+function onUserDisconnected() {
+    socket.on("user disconnected", (id) => {
+        for (let i = 0; i < usersList.length; i++) {
+            const user = usersList[i];
+            if (user.userID === id) {
+                user.connected = false;
+                break;
+            }
+        }
+        const userElm = $(`#${id}`);
+        if (userElm.length > 0) {
+            const statusElm = userElm.find('[class*="contact-status"]').first();
+            statusElm.removeClass().addClass("contact-status offline");
+        }
+    });
+}
+
+///////////////////////////// ROOM ////////////////////////////////
 
 function onRoomEvent() {
     socket.on("rooms", (rooms) => {
@@ -233,68 +297,60 @@ function onRoomEvent() {
     });
 }
 
-function onUserConnected() {
-    socket.on("user connected", (user) => {
-        const index = usersList.findIndex(u => u.userID === user.userID);
-        if (index === -1) {
-            user.hasNewMessages = false;
-            usersList.push(user);
-            createUserItemContainer(user);
-        } else {
-            const existingUser = usersList[index];
-            existingUser.connected = true;
-            const userElm = $(`#${existingUser.userID}`);
-            if (userElm.length > 0) {
-                const statusElm = userElm.find('[class*="contact-status"]').first();
-                statusElm.removeClass().addClass("contact-status online");
-            } else {
-                createUserItemContainer(user);
-            }
+function onUserJoinRoom() {
+    socket.on("join-room", ({userID, roomID}) => {
+        let indexRoom = roomsList.findIndex(r => r.roomID === roomID);
+        let room = roomsList[indexRoom];
+        if(userID === socket.userID){
+            selectedUser = null;
+            selectedRoom = room;
         }
-    });
-}
-
-function onUserDisconnected() {
-    socket.on("user disconnected", (id) => {
-        for (let i = 0; i < usersList.length; i++) {
-            const user = usersList[i];
-            if (user.userID === id) {
-                user.connected = false;
-                break;
-            }
-        }
-        const userElm = $(`#${id}`);
-        if (userElm.length > 0) {
-            const statusElm = userElm.find('[class*="contact-status"]').first();
-            statusElm.removeClass().addClass("contact-status offline");
-        }
-    });
-}
-
-function onReceiveMessage() {
-    socket.on("private message", ({content, from, to}) => {
-        if (selectedUser && selectedUser.userID === from) {
-            const message = {
-                content,
-                fromSelf: false,
-            }
-            const user = usersList.find(user => user.userID === from);
-            addNewMessage(message, user);
-        } else {
-            updateMessageStatus(from, true);
-        }
-        for (let i = 0; i < usersList.length; i++) {
-            const user = usersList[i];
-            const fromSelf = socket.userID === from;
-            if (user.userID === (fromSelf ? to : from)) {
-                user.messages.push({
-                    content,
-                    fromSelf,
-                });
-                if (user !== selectedUser) {
-                    user.hasNewMessages = true;
+        if(room){
+            console.log('room -', room);
+            let indexUser = usersList.findIndex(u => u.userID === userID);
+            let user = usersList[indexUser];
+            if (user) {
+                console.log('user', user)
+                // add user to room users
+                roomsList[indexRoom].users.push(userID);
+                console.log('room -', roomsList);
+                // display join message to all users in room
+                if(selectedRoom && selectedRoom.roomID === roomID){
+                    let content = user.username + " has join the channel.";
+                    createNotificationItemOnUserJoinLeaveRoom(content);
+                    if(user.userID !== socket.userID){
+                        createUserItemContainer(user);
+                    }
                 }
-                break;
+            }
+        }
+    });
+}
+
+function onLeaveRoom() {
+    socket.on("leave room", ({userID, roomID}) => {
+        if(randomChatAlreadySelected){
+
+        }else {
+            let indexUser = usersList.findIndex(u => u.userID === userID);
+            if (indexUser !== -1) {
+                // display left message to all users in room
+                let user = usersList[indexUser];
+                let content = user.username + " has left the channel.";
+                createNotificationItemOnUserJoinLeaveRoom(content);
+                // delete user from room
+                let indexRoom = roomsList.findIndex(r => r.roomID === roomID);
+                if(indexRoom !== -1){
+                    let roomUsers = roomsList[indexRoom].users;
+                    if(roomUsers.includes(userID)){
+                        let index = roomUsers.findIndex(idUser => idUser === userID);
+                        roomsList[indexRoom].users.splice(index, 1);
+                        let userElm = $( `#${userID}` );
+                        if(userElm){
+                            userElm.remove();
+                        }
+                    }
+                }
             }
         }
     });
@@ -319,148 +375,41 @@ function onReceiveRoomMessage() {
                 break;
             }
         }
-        addNewMessage(message, user);
-    });
-}
-
-function onUserJoinRoom() {
-    socket.on("join-room-message", ({roomID, content}) => {
-        if (selectedRoom.roomID === roomID) {
-            displayElmOnJoinOrLeftRoom(content);
+        if(selectedRoom.roomID === to){
+            createMessageItem(message);
         }
     });
 }
 
-function displayElmOnJoinOrLeftRoom(content){
-    const msg = $(`
-            <p class="text-black-50 small text-center my-1">${content}</p>
-            `);
-    $(".message-list").append(msg).animate({scrollTop: $(document).height()});
-}
+///////////////////////////// PRIVATE MESSAGE ////////////////////////////////////
 
-function updateUserStatus() {
-    socket.on("connect", () => {
-        usersList.forEach((user) => {
-            if (user.self) {
-                user.connected = true;
+function onReceivePrivateMessage() {
+    socket.on("private message", ({content, from, to}) => {
+        if (selectedUser && selectedUser.userID === from) {
+            const message = {
+                content,
+                fromSelf: false,
             }
-        });
-    });
-    socket.on("disconnect", () => {
-        usersList.forEach((user) => {
-            if (user.self) {
-                user.connected = false;
+            const user = usersList.find(user => user.userID === from);
+            createMessageItem(message);
+        } else {
+            updateMessageStatus(from, true);
+        }
+        for (let i = 0; i < usersList.length; i++) {
+            const user = usersList[i];
+            const fromSelf = socket.userID === from;
+            if (user.userID === (fromSelf ? to : from)) {
+                user.messages.push({
+                    content,
+                    fromSelf,
+                });
+                if (user !== selectedUser) {
+                    user.hasNewMessages = true;
+                }
+                break;
             }
-        });
-    });
-}
-
-function onGetSession() {
-    socket.on("session", ({sessionID, userID}) => {
-        // attach the session ID to the next reconnection attempts
-        socket.auth = {sessionID};
-        // store it in the localStorage
-        localStorage.setItem("sessionID", sessionID);
-        // save the ID of the user
-        socket.userID = userID;
-    });
-}
-
-function onRandomChatStart() {
-    socket.on("random chat start", ({name, room}) => {
-        timerVar = setInterval(countTimer, 1000);
-        $(".random-chat-loading").addClass("d-none");
-        $(".random-chat-panel").removeClass("d-none");
-        selectedRoom = { roomID: room, roomName: name }
-    });
-}
-
-function onChatEnd() {
-    socket.on("chat end", () => {
-        totalSeconds = 0;
-        clearInterval(timerVar);
-        if(randomChatAlreadySelected){
-            /*$('#user-left-modal').modal('toggle');*/
-            $('#user-left-modal').modal('show');
-            $(".send__").prop('disabled', true);
-            /*$('#user-left-modal').modal('hide');*/
         }
     });
-}
-
-function onLeaveRoom() {
-    socket.on("leave room", ({roomID, content}) => {
-        if (selectedRoom.roomID === roomID) {
-            displayElmOnJoinOrLeftRoom(content);
-        }
-    });
-}
-
-function createUserItemContainer(user) {
-    let status = user.connected ? "online" : "offline";
-    const usr = $(`
-        <li id=${user.userID} class="contact d-flex flex-row align-items-center">
-            <div class="wrap">
-                <span class="contact-status ${status}"></span>
-                <img alt="" src="./images/default.png"/>
-                <div class="meta">
-                    <p class="name">${user.username}</p>
-                    <p class="preview"></p>
-                </div>
-            </div>
-            <div class="mr-3">
-                <span class="badge count p-2 new-message">0</span>            
-            </div>
-        </li>`
-    ).click(function () {
-        const selectedUserId = $(this).attr("id");
-        selectedUser = usersList.find(u => u.userID === selectedUserId);
-        $('#contact-name').text(selectedUser.username)
-        //unselect if any Users From List
-        $(".contact.active").attr("class", "contact d-flex flex-row align-items-center");
-        // add selected class
-        $(this).attr("class", "contact d-flex flex-row align-items-center active");
-        $('#form').removeClass('d-none');
-        $(".message-list").empty();
-        selectedRoom = null;
-        $(".panel-body p").attr("class", "");
-        updateMessageStatus(selectedUserId, false);
-        displayUserMessages(selectedUser);
-    });
-    $("#active-user").append(usr);
-}
-
-function createRoomItemContainer(room) {
-    const roomElm = $(`<p id="${room.roomID}">#${room.roomName}</p><hr>`)
-        .click(function () {
-            const selectedRoomId = $(this).attr("id");
-            socket.emit("join-room", {
-                roomID: selectedRoomId
-            });
-            selectedRoom = roomsList.find(r => r.roomID === selectedRoomId);
-            selectedUser = null;
-            $('#contact-name').text(room.roomName)
-            //unselect if any Users From List
-            $(".contact.active").attr("class", "contact d-flex flex-row align-items-center");
-            // add selected class
-            $(this).attr("class", "selected-room");
-            // display messages
-            $('#form').removeClass('d-none');
-            $(".message-list").empty();
-            displayRoomMessages(selectedRoom);
-        });
-    $(".panel-body").append(roomElm);
-}
-
-function addNewMessage(message) {
-    const msg = $(`
-        <li class="${message.fromSelf ? "sent" : "replies"}">
-            <img alt="" src="./images/default.png"/>
-            <p>${message.content}</p>
-        </li>
-    `);
-    $(".message-list").append(msg);
-    $(".messages").animate({scrollTop: $(document).height()});
 }
 
 function updateMessageStatus(from, isNew) {
@@ -483,44 +432,136 @@ function updateMessageStatus(from, isNew) {
     }
 }
 
-function displayUserMessages(user) {
-    const {messages} = user;
-    messages.forEach(message => {
-        addNewMessage(message, user)
-    })
+///////////////////////////// RANDOM CHAT ////////////////////////////////////
+
+function onRandomChatStart() {
+    socket.on("random chat start", ({name, room}) => {
+        timerVar = setInterval(countTimer, 1000);
+        $(".random-chat-loading").addClass("d-none");
+        $(".random-chat-panel").removeClass("d-none");
+        selectedUser = null;
+        selectedRoom = {roomID: room, roomName: name}
+    });
 }
 
-function displayRoomMessages(room) {
-    const {messages} = room;
-    messages.forEach(message => {
-        addNewMessage(message)
-    })
-}
+///////////////////////////// OTHERS ////////////////////////////////////
 
 function countTimer() {
     ++totalSeconds;
-    let hour = Math.floor(totalSeconds /3600);
-    let minute = Math.floor((totalSeconds - hour*3600)/60);
-    let seconds = totalSeconds - (hour*3600 + minute*60);
-    if(hour < 10)
-        hour = "0"+hour;
-    if(minute < 10)
-        minute = "0"+minute;
-    if(seconds < 10)
-        seconds = "0"+seconds;
+    let hour = Math.floor(totalSeconds / 3600);
+    let minute = Math.floor((totalSeconds - hour * 3600) / 60);
+    let seconds = totalSeconds - (hour * 3600 + minute * 60);
+    if (hour < 10)
+        hour = "0" + hour;
+    if (minute < 10)
+        minute = "0" + minute;
+    if (seconds < 10)
+        seconds = "0" + seconds;
     $("#timer").html(hour + ":" + minute + ":" + seconds);
 }
 
-/*function createRoom(name) {
-    const room = $(`
-        <li class="">
-           <span>${name}</span>
+///////////////////////////// CREATE ELM ////////////////////////////////////
+
+function createUserItemContainer(user) {
+    let status = user.connected ? "online" : "offline";
+    const usr = $(`
+        <li id=${user.userID} class="contact d-flex flex-row align-items-center">
+            <div class="wrap">
+                <span class="contact-status ${status}"></span>
+                <img alt="" src="./images/default.png"/>
+                <div class="meta">
+                    <p class="name">${user.username}</p>
+                    <p class="preview"></p>
+                </div>
+            </div>
+            <div class="mr-3">
+                <span class="badge count p-2 new-message">0</span>            
+            </div>
+        </li>`
+    ).click(function () {
+        const selectedUserId = $(this).attr("id");
+        selectedUser = usersList.find(u => u.userID === selectedUserId);
+        selectedRoom = null;
+        $('#contact-name').text(selectedUser.username)
+        //unselect if any Users From List
+        $(".contact.active").attr("class", "contact d-flex flex-row align-items-center");
+        // add selected class
+        $(this).attr("class", "contact d-flex flex-row align-items-center active");
+        $('#form').removeClass('d-none');
+        $(".message-list").empty();
+        selectedRoom = null;
+        $(".panel-body p").attr("class", "");
+        const {messages} = selectedUser;
+        messages.forEach(message => {
+            createMessageItem(message)
+        });
+    });
+    $("#active-user").append(usr);
+}
+
+function createRoomItemContainer(room) {
+    const roomElm = $(`<p id="${room.roomID}">#${room.roomName}</p><hr>`)
+        .click(function () {
+            const selectedRoomId = $(this).attr("id");
+            if(!selectedRoom || (selectedRoom && selectedRoom.roomID !== selectedRoomId)){
+                console.log("OOO");
+                $(".panel-body p").attr("class", "");
+                $(this).attr("class", "selected");
+                let room = roomsList.find(r => r.roomID === selectedRoomId);
+                $('#contact-name').text(room.roomName);
+                    // add room users
+                $("#active-user").empty();
+                let users = room.users;
+                console.log("users", users);
+                users.forEach(idUser => {
+                    let user = usersList.find(user => user.userID === idUser);
+                    if(user.userID !== socket.userID){
+                        createUserItemContainer(user);
+                    }
+                });
+                // show room message
+                $(".message-list").empty();
+                const {messages} = room;
+                messages.forEach(message => {
+                    createMessageItem(message)
+                });
+                // emit event if user join for the first time
+                selectedRoom = room;
+                selectedUser = null;
+                console.log(socket.userID)
+                console.log(room.users)
+                let isUserJoined = room.users.includes(socket.userID);
+                console.log(isUserJoined)
+                if(!isUserJoined){
+                    socket.emit("join-room", {
+                        userID: socket.userID,
+                        roomID: selectedRoomId
+                    });
+                }
+            }
+        });
+    $(".panel-body").append(roomElm);
+}
+
+function createMessageItem(message) {
+    const msg = $(`
+        <li class="${message.fromSelf ? "sent" : "replies"}">
+            <img alt="" src="./images/default.png"/>
+            <p>${message.content}</p>
         </li>
     `);
-    $("#rooms > ul").append(room);
-}*/
+    $(".message-list").append(msg);
+    $(".messages").animate({scrollTop: $(document).height()});
+}
 
-//////////////////////////////////////////////
+function createNotificationItemOnUserJoinLeaveRoom(content) {
+    const msg = $(`
+            <p class="text-black-50 small text-center my-1">${content}</p>
+            `);
+    $(".message-list").append(msg).animate({scrollTop: $(document).height()});
+}
+
+/////////////////////////////// CALL //////////////////////////////////
 
 //-0-// Get Session
 onGetSession();
@@ -530,22 +571,19 @@ onConnectError();
 onUserEvent();
 //-3-// On new user connected
 onUserConnected();
-//-4-// On room event
-onRoomEvent();
-//-5-// On receive message
-onReceiveMessage();
-//-6-// On receive room message
-onReceiveRoomMessage();
-//-7-// Update user status on connect/disconnect
-updateUserStatus();
-//-8-// On Join Room
-onUserJoinRoom();
-//-9-// On Random Chat Start
-onRandomChatStart();
-//-10-// On Chat End
-onChatEnd();
-//-11-// On Leave Room
-onLeaveRoom();
-//-12-// On User Disconnected
+//-4-// On User Disconnected
 onUserDisconnected();
+//-5-// On room event
+onRoomEvent();
+//-6-// On Join Room
+onUserJoinRoom();
+//-7-// On Leave Room
+onLeaveRoom();
+//-8-// On receive room message
+onReceiveRoomMessage();
+//-9-// On receive private message
+onReceivePrivateMessage();
+//-10-// On start random chat
+onRandomChatStart();
+
 
