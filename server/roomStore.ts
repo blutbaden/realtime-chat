@@ -37,7 +37,7 @@ export class InMemoryRoomStore extends RoomStore {
     }
 
     findRoom(roomID) {
-        return this.rooms.find(r => r.roomID !== roomID);
+        return this.rooms.find(r => r.roomID === roomID);
     }
 
     getAllRooms() {
@@ -65,11 +65,8 @@ export class InMemoryRoomStore extends RoomStore {
             const room = this.rooms[indexRoom];
             if (room.users.includes(userID)) {
                 room.users = room.users.filter(id => id !== userID);
-                if(room.roomType == "RANDOM"){
-                    this.rooms.splice(indexRoom, 1);
-                }else {
-                    this.rooms[indexRoom] = room;
-                }
+                this.rooms[indexRoom] = room;
+                //this.rooms[indexRoom] = room;
             }
         }
     }

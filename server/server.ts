@@ -210,6 +210,14 @@ export class Server {
                     roomID
                 }
             );
+            // send users room to the joined user
+            let room = this.roomStore.findRoom(roomID);
+            if(room){
+                this.io.to(socket.id).emit('room-users', {
+                    users: room.users,
+                    roomID
+                });
+            }
         });
     }
 

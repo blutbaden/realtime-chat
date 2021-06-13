@@ -50,7 +50,7 @@ $(document).ready(function () {
         function onSend() {
             let content = "";
             if(randomChatAlreadySelected){
-                content = $('.input__text').val();
+                content = $('#chat_message').val();
             }else {
                 content = $('.input__text').val();
             }
@@ -307,14 +307,11 @@ function onUserJoinRoom() {
             selectedRoom = room;
         }
         if(room){
-            console.log('room -', room);
             let indexUser = usersList.findIndex(u => u.userID === userID);
             let user = usersList[indexUser];
             if (user) {
-                console.log('user', user)
                 // add user to room users
                 roomsList[indexRoom].users.push(userID);
-                console.log('room -', roomsList);
                 // display join message to all users in room
                 if(selectedRoom && selectedRoom.roomID === roomID){
                     let content = user.username + " has join the channel.";
@@ -324,6 +321,25 @@ function onUserJoinRoom() {
                     }
                 }
             }
+        }
+    });
+}
+
+function onGetRoomUsers() {
+    socket.on("room-users", ({users, roomID}) => {
+        let indexRoom = roomsList.findIndex(r => r.roomID === roomID);
+        let room = roomsList[indexRoom];
+        if(users){
+            $("#active-user").empty();
+            room.users = users;
+            users.forEach(userID => {
+                if(userID !== socket.userID){
+                    let user = usersList.find(user => user.userID === userID);
+                    if(user){
+                        createUserItemContainer(user);
+                    }
+                }
+            });
         }
     });
 }
@@ -446,6 +462,7 @@ function onRandomChatStart() {
         timerVar = setInterval(countTimer, 1000);
         $(".random-chat-loading").addClass("d-none");
         $(".random-chat-panel").removeClass("d-none");
+        $("#chat_message").val("");
         selectedUser = null;
         selectedRoom = {roomID: room, roomName: name}
     });
@@ -502,6 +519,7 @@ function createUserItemContainer(user) {
         messages.forEach(message => {
             createMessageItem(message)
         });
+        updateMessageStatus(selectedUserId, false);
     });
     $("#active-user").append(usr);
 }
@@ -511,7 +529,6 @@ function createRoomItemContainer(room) {
         .click(function () {
             const selectedRoomId = $(this).attr("id");
             if(!selectedRoom || (selectedRoom && selectedRoom.roomID !== selectedRoomId)){
-                console.log("OOO");
                 $(".panel-body p").attr("class", "");
                 $(this).attr("class", "selected");
                 let room = roomsList.find(r => r.roomID === selectedRoomId);
@@ -519,7 +536,6 @@ function createRoomItemContainer(room) {
                     // add room users
                 $("#active-user").empty();
                 let users = room.users;
-                console.log("users", users);
                 users.forEach(idUser => {
                     let user = usersList.find(user => user.userID === idUser);
                     if(user.userID !== socket.userID){
@@ -535,10 +551,7 @@ function createRoomItemContainer(room) {
                 // emit event if user join for the first time
                 selectedRoom = room;
                 selectedUser = null;
-                console.log(socket.userID)
-                console.log(room.users)
                 let isUserJoined = room.users.includes(socket.userID);
-                console.log(isUserJoined)
                 if(!isUserJoined){
                     socket.emit("join-room", {
                         userID: socket.userID,
@@ -584,13 +597,15 @@ onUserDisconnected();
 onRoomEvent();
 //-6-// On Join Room
 onUserJoinRoom();
-//-7-// On Leave Room
+//-7-// On Get room users
+onGetRoomUsers();
+//-8-// On Leave Room
 onLeaveRoom();
-//-8-// On receive room message
+//-9-// On receive room message
 onReceiveRoomMessage();
-//-9-// On receive private message
+//-10-// On receive private message
 onReceivePrivateMessage();
-//-10-// On start random chat
+//-11-// On start random chat
 onRandomChatStart();
 
 
