@@ -50,8 +50,8 @@ hr {
     width: 350px;
     margin-top: auto;
     margin-bottom: auto;
-    background: linear-gradient(-135deg, rgb(63, 81, 181), rgb(233, 30, 99));
-    position: relative;
+    background: linear-gradient(
+            -45deg, rgba(147, 26, 222, 0.83) 0, rgba(28, 206, 234, 0.82) 100%);    position: relative;
     display: flex;
     justify-content: center;
     flex-direction: column;
@@ -60,16 +60,6 @@ hr {
     -webkit-box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     -moz-box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     border-radius: 5px;
-}
-.brand_logo_container {
-    position: absolute;
-    height: 85px;
-    width: 85px;
-    top: -40px;
-    border-radius: 50%;
-    background: #000000;
-    padding: 10px;
-    text-align: center;
 }
 .brand_logo {
     height: 65px;
@@ -80,6 +70,9 @@ hr {
     width: 100%;
     background: #0000003d;
     color: white !important;
+}
+.login_btn:hover {
+    background: rgba(28, 26, 26, 0.24);
 }
 .login_btn:focus {
     box-shadow: none !important;
