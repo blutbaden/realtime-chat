@@ -9,17 +9,17 @@
   "author": "M@nsoura",
   "license": "ISC",
   "devDependencies": {
-    "@types/express": "^4.17.11",
-    "@types/socket.io": "^2.1.13",
+    "@types/express": "^4.17.13",
+    "@types/socket.io": "^3.0.2",
     "nodemon": "^2.0.7",
-    "ts-node": "^9.1.1",
-    "typescript": "^4.2.4"
+    "ts-node": "^10.3.0",
+    "typescript": "^4.4.3"
   },
   "dependencies": {
-    "@types/crypto-js": "^4.0.1",
-    "crypto-js": "^4.0.0",
+    "@types/crypto-js": "^4.0.2",
+    "crypto-js": "^4.1.1",
     "express": "^4.17.1",
     "randombytes": "^2.1.0",
-    "socket.io": "^4.0.1"
+    "socket.io": "^4.2.0"
   }
 }
