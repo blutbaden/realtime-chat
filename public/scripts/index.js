@@ -314,6 +314,7 @@ function onUserJoinRoom() {
                 roomsList[indexRoom].users.push(userID);
                 // display join message to all users in room
                 if(selectedRoom && selectedRoom.roomID === roomID){
+                    $('.users_room').removeClass('d-none');
                     let content = user.username + " has join the channel.";
                     createNotificationItemOnUserJoinLeaveRoom(content);
                     if(user.userID !== socket.userID){
@@ -506,7 +507,10 @@ function createUserItemContainer(user) {
         const selectedUserId = $(this).attr("id");
         selectedUser = usersList.find(u => u.userID === selectedUserId);
         selectedRoom = null;
-        $('#contact-name').text(selectedUser.username)
+        $('#contact-name').text(selectedUser.username);
+        $('.selected-chat').removeClass('d-none');
+        $('.empty-chat').addClass('d-none');
+        $('#vcall-btn').removeClass('d-none');
         //unselect if any Users From List
         $(".contact.active").attr("class", "contact d-flex flex-row align-items-center");
         // add selected class
@@ -530,9 +534,12 @@ function createRoomItemContainer(room) {
             const selectedRoomId = $(this).attr("id");
             if(!selectedRoom || (selectedRoom && selectedRoom.roomID !== selectedRoomId)){
                 $(".panel-body p").attr("class", "");
+                $('.selected-chat').removeClass('d-none');
+                $('.empty-chat').addClass('d-none');
                 $(this).attr("class", "selected");
                 let room = roomsList.find(r => r.roomID === selectedRoomId);
                 $('#contact-name').text(room.roomName);
+                $('#vcall-btn').addClass('d-none');
                     // add room users
                 $("#active-user").empty();
                 let users = room.users;

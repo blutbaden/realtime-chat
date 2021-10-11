@@ -6,7 +6,6 @@ html, body {
 hr {
     margin: 3px !important;
 }
-
 .blank {
     min-height: 50%;
 }
@@ -64,19 +63,18 @@ hr {
 }
 .brand_logo_container {
     position: absolute;
-    height: 120px;
-    width: 120px;
-    top: -65px;
+    height: 85px;
+    width: 85px;
+    top: -40px;
     border-radius: 50%;
     background: #000000;
     padding: 10px;
     text-align: center;
 }
 .brand_logo {
-    height: 100px;
-    width: 100px;
+    height: 65px;
+    width: 65px;
     border-radius: 50%;
-    border: 2px solid white;
 }
 .login_btn {
     width: 100%;
@@ -437,5 +435,4 @@ video {
         font-weight: 600;
         font-size: 14px;
     }
-
 }

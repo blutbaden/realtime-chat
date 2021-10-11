@@ -282,6 +282,11 @@ export class Server {
                     username: username,
                     connected: false,
                 });
+                // remove the socket from list of queue if exist
+                let socketIndex = this.queue.findIndex(socket => socket.data.userID === userID)
+                if(socketIndex !== -1){
+                    this.queue.splice(socketIndex, 1);
+                }
                 // leave random rooms and notify users
                 this.roomStore.findJoinedRoomsForUser(userID).forEach(room => {
                     let {roomID} = room;
