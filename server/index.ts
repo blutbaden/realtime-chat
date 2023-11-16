@@ -6,5 +6,5 @@ import {InMemoryRoomStore} from "./roomStore";
 const server = new Server(new InMemorySessionStore(), new InMemoryMessageStore(), new InMemoryRoomStore());
 
 server.listen(port => {
-    console.log(`Server is listening on http://localhost:${port}`);
+    console.log(`Server is listening on port:${port}`);
 });
