@@ -13,7 +13,7 @@ export class Server {
     private app: Application;
     private io: SocketIoServer;
 
-    private readonly DEFAULT_PORT = 5000;
+    private readonly DEFAULT_PORT = 4000;
     private users = [];
     private queue = []; // list of sockets waiting for peers
 

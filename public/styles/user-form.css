@@ -6,6 +6,7 @@ html, body {
 hr {
     margin: 3px !important;
 }
+
 .blank {
     min-height: 50%;
 }
@@ -14,29 +15,33 @@ hr {
     height: 70%;
 }
 
-.t-user{
-    font-family:proxima-nova,"Source Sans Pro",sans-serif;
-    font-size: 20px;
-    color: #0c253e;
+.t-user {
+    #font-family: proxima-nova, "Source Sans Pro", sans-serif;
+    font-size: 18px;
     font-weight: bold;
 }
-@media screen and (max-width:735px){
-    .t-user{
+
+@media screen and (max-width: 735px) {
+    .t-user {
         font-size: 13px;
         padding: 10px 0 7px 0 !important;
     }
+
     .new-message {
         display: none;
     }
+
     #accordion .panel-title a {
         font-size: 10px !important;
         text-align: center !important;
         font-weight: 800 !important;
     }
+
     #accordion .panel-title a:before, #accordion .panel-title a.collapsed:before {
         content: "" !important;
         font-family: "" !important;
     }
+
     .panel-body > p {
         padding: 0 !important;
         font-size: 10px;
@@ -45,13 +50,15 @@ hr {
         margin-top: 7px;
     }
 }
+
 .user_card {
     height: 250px;
     width: 350px;
     margin-top: auto;
     margin-bottom: auto;
     background: linear-gradient(
-            -45deg, rgba(147, 26, 222, 0.83) 0, rgba(28, 206, 234, 0.82) 100%);    position: relative;
+            -45deg, rgba(147, 26, 222, 0.83) 0, rgba(28, 206, 234, 0.82) 100%);
+    position: relative;
     display: flex;
     justify-content: center;
     flex-direction: column;
@@ -61,23 +68,28 @@ hr {
     -moz-box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     border-radius: 5px;
 }
+
 .brand_logo {
     height: 65px;
     width: 65px;
     border-radius: 50%;
 }
+
 .login_btn {
     width: 100%;
     background: #0000003d;
     color: white !important;
 }
+
 .login_btn:hover {
     background: rgba(28, 26, 26, 0.24);
 }
+
 .login_btn:focus {
     box-shadow: none !important;
     outline: 0px !important;
 }
+
 .input-group-text {
     background: #0000003d;
     color: white !important;
@@ -85,50 +97,55 @@ hr {
     border: 0 !important;
     border-radius: 0.25rem 0 0 0.25rem !important;
 }
+
 .input_user,
 .input_pass:focus {
     box-shadow: none !important;
     outline: 0px !important;
 }
-.custom-checkbox .custom-control-input:checked~.custom-control-label::before {
+
+.custom-checkbox .custom-control-input:checked ~ .custom-control-label::before {
     background-color: #c0392b !important;
 }
 
 /************************************************/
 
-
-#accordion .panel{
+#accordion .panel {
     border: none;
     border-radius: 3px;
     box-shadow: none;
     /*margin-bottom: 15px;*/
 }
-#accordion .panel-heading{
+
+#accordion .panel-heading {
     padding: 0;
     border: none;
     border-radius: 3px;
 }
-#accordion .panel-title a{
+
+#accordion .panel-title a {
     display: block;
     padding: 12px 15px;
-    background: #71daca;
+    background: #580c96;
     font-size: 16px;
     font-weight: 400;
     color: #ffffff;
-    font-family:proxima-nova,"Source Sans Pro",sans-serif;
-    /*border: 1px solid #ececec;*/
-    box-shadow: 0 0 10px rgba(0,0,0,.05);
+    font-family: proxima-nova, "Source Sans Pro", sans-serif;
     position: relative;
     transition: all 0.5s ease 0s;
-    box-shadow: 0 1px 2px rgba(43,59,93,0.30);
+    box-shadow: 0 1px 2px rgba(43, 59, 93, 0.30);
 }
-#accordion .panel-title a.collapsed{
-    box-shadow: none;
-    /*color: #f7d2a0;*/
-    box-shadow: 0 1px 2px rgba(43,59,93,0.30);
+
+#accordion .panel-title a:hover {
+    background: #3d0769;
 }
+
+#accordion .panel-title a.collapsed {
+    box-shadow: 0 1px 2px rgba(43, 59, 93, 0.30);
+}
+
 #accordion .panel-title a:before,
-#accordion .panel-title a.collapsed:before{
+#accordion .panel-title a.collapsed:before {
     content: "\f067";
     font-family: "Font Awesome 5 Free";
     width: 25px;
@@ -139,16 +156,18 @@ hr {
     color: #ffffff;
     text-align: center;
     position: absolute;
-    top: 8px;
+    top: 15px;
     right: 15px;
     transform: rotate(135deg);
     transition: all 0.3s ease 0s;
 }
-#accordion .panel-title a.collapsed:before{
+
+#accordion .panel-title a.collapsed:before {
     /*color: #f7d2a0;*/
     transform: rotate(0);
 }
-#accordion .panel-title a:after{
+
+#accordion .panel-title a:after {
     content: "";
     width: 1px;
     height: 100%;
@@ -157,23 +176,29 @@ hr {
     top: 0;
     right: 55px;
 }
-#accordion .panel-body{
+
+#accordion .panel-body {
     /*padding: 0px 15px;*/
     border: none;
     font-size: 15px;
     /*color: #f7d2a0;*/
     line-height: 27px;
+    background: rgba(255, 255, 255, 0.11);
+}
+
+#accordion .panel-body:hover {
+    background: rgba(255, 255, 255, 0.33);
 }
 
 .panel-body > p {
     color: #f9f9fa;
     padding: 10px;
     cursor: pointer;
-    font-family:proxima-nova,"Source Sans Pro",sans-serif
+    #font-family: proxima-nova, "Source Sans Pro", sans-serif
 }
 
-.count{
-    background-color: #8475e7!important;
+.count {
+    background-color: #8914dc !important;
     border-radius: 50%;
     width: 25px;
 }
@@ -186,15 +211,15 @@ hr {
     background: #00000024;
     position: fixed;
     z-index: 10000;
-    top:0;
+    top: 0;
     width: 100%;
     height: 1600px;
 }
 
 #loading {
-    width: 350px;
-    height: 350px;
-    margin: 10% auto;
+    width: 250px;
+    height: 250px;
+    margin: 20% auto;
     background-size: 40%;
     background: url(../images/loader.gif) no-repeat center;
 }
@@ -238,7 +263,18 @@ hr {
 }
 
 .radio:hover {
-    box-shadow: 2px 2px 2px 2px rgba(0, 0, 0, 0.1)
+    box-shadow: 0px 8px 16px 0px #EEEEEE;
+    -webkit-filter: grayscale(0%);
+    -moz-filter: grayscale(0%);
+    -o-filter: grayscale(0%);
+    -ms-filter: grayscale(0%);
+    filter: grayscale(0%);
+    background-color: #7e46ad;
+    color: #cbcaca;
+}
+
+.radio {
+    color: #a259e7;
 }
 
 .radio.selected {
@@ -247,11 +283,24 @@ hr {
     -moz-filter: grayscale(0%);
     -o-filter: grayscale(0%);
     -ms-filter: grayscale(0%);
-    filter: grayscale(0%)
+    filter: grayscale(0%);
+}
+
+.radio.selected p {
+    color: white !important;
+    font-weight: bold;
+}
+
+.radio.selected p:hover {
+    color: #cbcaca;
 }
 
 .selected {
-    background-color: #8475e7a6
+    background-color: #a259e7;
+}
+
+.selected-group {
+    background-color: #bd8ce3;
 }
 
 /**************/
@@ -275,14 +324,17 @@ hr {
 }
 
 @keyframes rotate {
-    100% {transform: rotate(360deg);}
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .loading-text {
     color: #8e64e6;
     font-weight: bold;
-    font-family:proxima-nova,"Source Sans Pro",sans-serif;
+    font-family: proxima-nova, "Source Sans Pro", sans-serif;
 }
+
 /**********************/
 
 .header {
@@ -301,7 +353,8 @@ hr {
 
 #chat-time {
     font-weight: 600;
-    font-size: 20px;
+    font-size: 16px;
+    color: rgb(112 193 237) !important;
 }
 
 .videos-group {
@@ -321,11 +374,11 @@ video {
 }
 
 .options {
-    background-color: #5dcaed75;
+    background-color: #9d68e76e;
 }
 
 .options__button {
-    background-color: #a2a2a2;
+    background-color: #a259e7;
     height: 50px;
     color: #eeeeee;
     font-size: 1.2rem;
@@ -336,11 +389,11 @@ video {
 }
 
 .options__button:hover {
-    background: #36275e;
+    background: #6c399b;
 }
 
 .send__ {
-    background-color: #71daca;
+    background-color: #a259e7;
     height: 50px;
     color: #eeeeee;
     font-size: 1.2rem;
@@ -351,7 +404,7 @@ video {
 }
 
 .send__:hover {
-    background: #435f7a;
+    background: #6c399b;
 }
 
 .random-chat__right {
@@ -379,9 +432,13 @@ video {
     height: 50px;
     flex: 1;
     font-size: 1rem;
-    border-radius: 5px;
     padding-left: 20px;
     border: none;
+    border-radius: 50px;
+}
+
+.random-chat__message_container > input:focus-visible {
+    outline-color: #a253e6;
 }
 
 /*.messages {
@@ -416,14 +473,17 @@ video {
     .random-chat__right {
         display: none !important;
     }
+
     .random-chat-left {
         width: 100%;
         flex: 1;
     }
+
     video {
         height: auto;
         width: 100%;
     }
+
     #chat-time {
         font-weight: 600;
         font-size: 14px;

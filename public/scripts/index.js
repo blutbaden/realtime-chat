@@ -74,6 +74,7 @@ $(document).ready(function () {
                     });
                 }
                 $('.input__text').val('').focus();
+                $('#chat_message').val('').focus();
             }
         }
         $(".send-btn").click(function () {
@@ -90,6 +91,8 @@ $(document).ready(function () {
         $('.radio-group .radio').click(function () {
             $('.selected .fa').removeClass('fa-check');
             $('.radio').removeClass('selected');
+            $('#select-btn').removeClass('btn-secondary');
+            $('#select-btn').addClass('btn-primary');
             $(this).addClass('selected');
         });
         $('#select-btn').click(function () {
@@ -350,7 +353,7 @@ function onLeaveRoom() {
         if(randomChatAlreadySelected){
             totalSeconds = 0;
             clearInterval(timerVar);
-            $('#user-left-modal').modal('show');
+            $('#user-left-modal').modal({backdrop: 'static', keyboard: false},'show');
             $(".send__").prop('disabled', true);
             $("#chat_message").prop('disabled', true);
             /*$('#user-left-modal').modal('toggle');*/

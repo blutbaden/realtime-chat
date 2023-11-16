@@ -6,7 +6,7 @@
     "start": "ts-node server/index.ts",
     "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' server/index.ts"
   },
-  "author": "M@nsoura",
+  "author": "Grimwolf",
   "license": "ISC",
   "devDependencies": {
     "@types/express": "^4.17.13",
