@@ -73,12 +73,13 @@ export class InMemoryRoomStore extends RoomStore {
 
     findJoinedRoomsForUser(userID) {
         return this.rooms.filter(
-            ({ users }) => users.filter(id => id === userID)
+            ({ users }) => users.some(id => id === userID)
         );
     }
 
     findJoinedRoomsForUserByRoomType(userID, type) {
         return this.rooms.filter(
-            ({ users, roomType }) => ((users.filter(id => id === userID)) && roomType === type));
+            ({ users, roomType }) => users.some(id => id === userID) && roomType === type
+        );
     }
 }
